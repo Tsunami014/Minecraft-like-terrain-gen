@@ -70,7 +70,7 @@ def average_cells(vor, data):
             count[p] += 1
             sum_[p] += data[i, j]
 
-    average = sum_/count
+    average = np.divide(sum_, count, out=np.zeros_like(sum_), where=count!=0)
     average[count==0] = 0
 
     return average
@@ -86,7 +86,7 @@ def fill_cells(vor, data):
 
     return image
 
-def color_cells(vor, data, dtype=int):
+def colour_cells(vor, data, dtype=int):
     size = vor.shape[0]
     image = np.zeros((size, size, 3))
 
@@ -173,10 +173,10 @@ def apply_height_map(im_map, smooth_map, height_map, land_mask):
 
     normal_map = np.interp(normal_map, (-1, 1), (-192, 192))
 
-    normal_map_color = np.repeat(normal_map[:, :, np.newaxis], 3, axis=-1)
-    normal_map_color = normal_map_color.astype(int)
+    normal_map_colour = np.repeat(normal_map[:, :, np.newaxis], 3, axis=-1)
+    normal_map_colour = normal_map_colour.astype(int)
 
-    out_map = im_map + normal_map_color
+    out_map = im_map + normal_map_colour
     return out_map, normal_map
 
 def bezier(x1, y1, x2, y2, a):

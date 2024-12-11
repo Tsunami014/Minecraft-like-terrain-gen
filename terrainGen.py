@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.morphology import binary_dilation
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage import binary_dilation
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from funcs import (
@@ -12,7 +12,7 @@ from funcs import (
     average_cells, 
     fill_cells, 
     quantize, 
-    color_cells, 
+    colour_cells, 
     filter_map, 
     get_boundary, 
     place_trees, 
@@ -33,7 +33,7 @@ biome_names = [
   "temperate_rainforest",
   "boreal_forest"
 ]
-biome_colors = [
+biome_colours = [
   [255, 255, 178],
   [184, 200, 98],
   [188, 161, 53],
@@ -45,8 +45,8 @@ biome_colors = [
   [35, 114, 94]
 ]
 
-for i, color in enumerate(biome_colors):
-    indices = np.where(np.all(im == color, axis=-1))
+for i, colour in enumerate(biome_colours):
+    indices = np.where(np.all(im == colour, axis=-1))
     biomes[indices] = i
     
 biomes = np.flip(biomes, axis=0).T
@@ -95,7 +95,7 @@ class Map:
             biome_cells[i] = biomes[temp, precip]
         
         biome_map = fill_cells(vor_map, biome_cells).astype(np.uint32)
-        return biome_map, color_cells(biome_map, biome_colors)
+        return biome_map, colour_cells(biome_map, biome_colours)
 
     def generate_height_maps(self):
         height_map = noise_map(self.size, 4, self.map_seed, octaves=6, persistence=0.5, lacunarity=2)
@@ -143,7 +143,7 @@ class Map:
             temp_map, precip_map = temp_precip_future.result()
             temp_map, precip_map = self.quantize_and_fill(vor_map, temp_map, precip_map)
 
-            biome_map, biome_color_map = self.assign_biomes(vor_map, temp_map, precip_map)
+            biome_map, biome_colour_map = self.assign_biomes(vor_map, temp_map, precip_map)
 
             height_map, smooth_height_map = height_maps_future.result()
             land_mask, blurred_land_mask = self.create_masks(height_map)
@@ -164,16 +164,19 @@ class Map:
             rivers, rivers_height = self.generate_rivers(adjusted_height_map, biome_map, vor_map, land_mask)
             adjusted_height_river_map = adjusted_height_map * (1 - rivers_height) - 0.05 * rivers
             river_land_mask = adjusted_height_river_map >= 0
-            rivers_biome_color_map = np.repeat(river_land_mask[:, :, np.newaxis], 3, axis=-1) * biome_color_map + (1 - river_land_mask)[:, :, np.newaxis] * np.array([12, 14, 255])
+            rivers_biome_colour_map = np.repeat(river_land_mask[:, :, np.newaxis], 3, axis=-1) * biome_colour_map + (1 - river_land_mask)[:, :, np.newaxis] * np.array([12, 14, 255])
 
             trees = self.place_trees_parallel(biome_masks, river_land_mask, adjusted_height_river_map)
 
-            color_map = apply_height_map(rivers_biome_color_map, adjusted_height_river_map, adjusted_height_river_map, river_land_mask)
+            colour_map, _ = apply_height_map(rivers_biome_colour_map, adjusted_height_river_map, adjusted_height_river_map, river_land_mask)
+            # colour_min, colour_max = colour_map.min(), colour_map.max()
+            # colour_map = ((colour_map - colour_min) / (colour_max - colour_min) * 255).astype(np.uint8)
+            colour_map = np.clip(colour_map, 0, 255)
 
             plt.figure(dpi=150, figsize=(5, 5))
             for k in range(len(biome_names)):
                 plt.scatter(*trees[k].T, s=0.15, c="red")
-            plt.imshow(color_map[0])
+            plt.imshow(colour_map)
 
 if __name__ == '__main__':
     m = Map()
