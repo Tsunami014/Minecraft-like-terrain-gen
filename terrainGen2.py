@@ -98,10 +98,13 @@ def generate_poly(x, y):
 
     water = True
     depth = 0
+    temp = 0
+    precip = 0
 
     for corner in poly_copy:
         v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
-        v2 = noise.pnoise2(corner[0] / CHUNK_SIZE + 1000, corner[2] / CHUNK_SIZE)
+        temp += noise.pnoise2(corner[0] / CHUNK_SIZE + 1000, corner[2] / CHUNK_SIZE)
+        precip += noise.pnoise2(corner[0] / CHUNK_SIZE + 2000, corner[2] / CHUNK_SIZE)
         if v < 0:
             depth -= v
             v = 0
@@ -112,7 +115,8 @@ def generate_poly(x, y):
     if water:
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
     else:
-        c = (CHUNK_SIZE - v * 10 + v2 * CHUNK_SIZE, 50 + v2 * 40 + v * CHUNK_SIZE, 50 + v * 10)
+        c = (min(255, max(0, 125 - temp * 100)), 125, min(255, max(0, 125 - precip * 100)))
+        #c = (CHUNK_SIZE - v * 10 + v2 * CHUNK_SIZE, 50 + v2 * 40 + v * CHUNK_SIZE, 50 + v * 10)
 
     return [poly_copy, c]
 
@@ -172,7 +176,7 @@ while run:
     if keys[pygame.K_e] or pygame.key.get_mods() & pygame.KMOD_SHIFT:
         pos[1] += movement
 
-    rot_by = math.radians(1)*speed
+    rot_by = math.radians(2)*speed
     if keys[pygame.K_UP]:
         rot[0] -= rot_by
     if keys[pygame.K_DOWN]:
@@ -201,8 +205,9 @@ while run:
     # Sort polygons by depth (from farthest to nearest)
     polygons_to_render.sort(reverse=True)
 
-    bg = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-    bg.fill(0)
+    if FOG:
+        bg = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+        bg.fill(0)
 
     if not polygons_to_render:
         maxDepth = 0
@@ -210,9 +215,13 @@ while run:
         maxDepth = max(i[0] for i in polygons_to_render)
     for depth, render_poly, colour in polygons_to_render:
         colour = (*colour, (1-depth/maxDepth)*255)
-        pygame.draw.polygon(bg, colour, render_poly)
+        if FOG:
+            pygame.draw.polygon(bg, colour, render_poly)
+        else:
+            pygame.draw.polygon(screen, colour, render_poly)
 
-    screen.blit(bg, (0, 0))
+    if FOG:
+        screen.blit(bg, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
