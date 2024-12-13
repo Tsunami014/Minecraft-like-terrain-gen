@@ -1,11 +1,12 @@
-import pygame, sys, math
+import pygame
+import math
 from copy import deepcopy
 import noise
 
 clock = pygame.time.Clock()
 pygame.init()
 pygame.display.set_caption('3D Terrain')
-screen = pygame.display.set_mode((500, 500), 0, 32)
+screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
 FOG = False
@@ -144,35 +145,34 @@ def move_player(pos, rot, direction, amount, strafe=False):
 
 polygons = generate_surround_polys(pos, {})
 
-while True:
-    bg_surf = pygame.Surface(screen.get_size())
-    bg_surf.fill((100, 200, 250))
-    display = screen.copy()
-    display.blit(bg_surf, (0, 0))
-    bg_surf.set_alpha(120)
+run = True
+while run:
+    screen.fill((100, 200, 250))
 
     # move
+    speed = (2 if pygame.key.get_mods() & pygame.KMOD_CTRL else 1)
     keys = pygame.key.get_pressed()
     moved = False
+    movement = 0.25*speed
     if keys[pygame.K_w]:
-        move_player(pos, rot, 1, 0.25)
+        move_player(pos, rot, 1, movement)
         moved = True
     if keys[pygame.K_s]:
-        move_player(pos, rot, -1, 0.25)
+        move_player(pos, rot, -1, movement)
         moved = True
     if keys[pygame.K_a]:
-        move_player(pos, rot, 1, 0.25, True)
+        move_player(pos, rot, 1, movement, True)
         moved = True
     if keys[pygame.K_d]:
-        move_player(pos, rot, -1, 0.25, True)
+        move_player(pos, rot, -1, movement, True)
         moved = True
     
     if keys[pygame.K_q] or keys[pygame.K_SPACE]:
-        pos[1] -= 0.25
+        pos[1] -= movement
     if keys[pygame.K_e] or pygame.key.get_mods() & pygame.KMOD_SHIFT:
-        pos[1] += 0.25
+        pos[1] += movement
 
-    rot_by = math.radians(1)
+    rot_by = math.radians(1)*speed
     if keys[pygame.K_UP]:
         rot[0] -= rot_by
     if keys[pygame.K_DOWN]:
@@ -201,20 +201,27 @@ while True:
     # Sort polygons by depth (from farthest to nearest)
     polygons_to_render.sort(reverse=True)
 
-    for depth, render_poly, color in polygons_to_render:
-        pygame.draw.polygon(display, color, render_poly)
+    bg = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    bg.fill(0)
 
-    display.set_alpha(150)
-    screen.blit(display, (0, 0))
+    if not polygons_to_render:
+        maxDepth = 0
+    else:
+        maxDepth = max(i[0] for i in polygons_to_render)
+    for depth, render_poly, colour in polygons_to_render:
+        colour = (*colour, (1-depth/maxDepth)*255)
+        pygame.draw.polygon(bg, colour, render_poly)
+
+    screen.blit(bg, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
-            sys.exit()
+            run = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 pygame.quit()
-                sys.exit()
+                run = False
 
     pygame.display.update()
     clock.tick(60)
