@@ -20,17 +20,18 @@ def offset_polygon(polygon, offset):
 def rotate_point(point, rot):
     x, y, z = point
 
-    # Rotation around X-axis (pitch)
-    cos_pitch = math.cos(rot[0])
-    sin_pitch = math.sin(rot[0])
-    y1 = y * cos_pitch - z * sin_pitch
-    z1 = y * sin_pitch + z * cos_pitch
-
     # Rotation around Y-axis (yaw)
     cos_yaw = math.cos(rot[1])
     sin_yaw = math.sin(rot[1])
-    x1 = x * cos_yaw + z1 * sin_yaw
-    z2 = -x * sin_yaw + z1 * cos_yaw
+    x1 = x * cos_yaw + z * sin_yaw
+    z1 = -x * sin_yaw + z * cos_yaw
+
+    # Rotation around X-axis (pitch)
+    cos_pitch = math.cos(rot[0])
+    sin_pitch = math.sin(rot[0])
+    y1 = y * cos_pitch - z1 * sin_pitch
+    z2 = y * sin_pitch + z1 * cos_pitch
+
 
     # Rotation around Z-axis (roll)
     cos_roll = math.cos(rot[2])
@@ -115,6 +116,18 @@ def generate_surround_polys(pos, polygons):
                 newpolys[p] = generate_poly(world_x, world_y)
     return newpolys
 
+def move_player(pos, rot, direction, amount, strafe=False):
+    if strafe:
+        dx = amount * math.cos(rot[1])
+        dz = amount * -math.sin(rot[1])
+    else:
+        dx = amount * math.sin(rot[1])
+        dz = amount * math.cos(rot[1])
+    dy = amount * -math.sin(rot[0])
+    pos[0] -= dx * direction
+    pos[1] -= dy * direction
+    pos[2] += dz * direction
+
 polygons = generate_surround_polys(pos, {})
 
 while True:
@@ -128,21 +141,22 @@ while True:
     keys = pygame.key.get_pressed()
     moved = False
     if keys[pygame.K_w]:
-        pos[2] += 0.25
+        move_player(pos, rot, 1, 0.25)
         moved = True
     if keys[pygame.K_s]:
-        pos[2] -= 0.25
+        move_player(pos, rot, -1, 0.25)
         moved = True
     if keys[pygame.K_a]:
-        pos[0] += 0.25
+        move_player(pos, rot, 1, 0.25, True)
         moved = True
     if keys[pygame.K_d]:
-        pos[0] -= 0.25
+        move_player(pos, rot, -1, 0.25, True)
         moved = True
-    if keys[pygame.K_q]:
-        pos[1] += 0.25
-    if keys[pygame.K_e]:
+    
+    if keys[pygame.K_q] or keys[pygame.K_SPACE]:
         pos[1] -= 0.25
+    if keys[pygame.K_e] or pygame.key.get_mods() & pygame.KMOD_SHIFT:
+        pos[1] += 0.25
 
     rot_by = math.radians(1)
     if keys[pygame.K_UP]:
@@ -150,9 +164,9 @@ while True:
     if keys[pygame.K_DOWN]:
         rot[0] += rot_by
     if keys[pygame.K_LEFT]:
-        rot[1] -= rot_by
-    if keys[pygame.K_RIGHT]:
         rot[1] += rot_by
+    if keys[pygame.K_RIGHT]:
+        rot[1] -= rot_by
     if keys[pygame.K_PERIOD]:
         rot[2] += rot_by
     if keys[pygame.K_SLASH]:
