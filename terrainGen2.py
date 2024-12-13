@@ -11,6 +11,9 @@ screen = pygame.display.set_mode((500, 500))
 FOV = 90
 FOG = False
 CHUNK_SIZE = 30
+BIOME_SIZE = 10
+
+TP_map = pygame.image.load('TP_map.png')
 
 def offset_polygon(polygon, offset):
     for point in polygon:
@@ -104,7 +107,7 @@ def generate_poly(x, y):
     for corner in poly_copy:
         v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
         temp += noise.pnoise2(corner[0] / CHUNK_SIZE + 1000, corner[2] / CHUNK_SIZE)
-        precip += noise.pnoise2(corner[0] / CHUNK_SIZE + 2000, corner[2] / CHUNK_SIZE)
+        precip += noise.pnoise2((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE, (corner[2] / CHUNK_SIZE)/BIOME_SIZE)
         if v < 0:
             depth -= v
             v = 0
@@ -115,7 +118,9 @@ def generate_poly(x, y):
     if water:
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
     else:
-        c = (min(255, max(0, 125 - temp * 100)), 125, min(255, max(0, 125 - precip * 100)))
+        map_w, map_h = TP_map.get_size()
+        biome = TP_map.get_at((int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/2)))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/2))))))
+        c = biome[:3]
         #c = (CHUNK_SIZE - v * 10 + v2 * CHUNK_SIZE, 50 + v2 * 40 + v * CHUNK_SIZE, 50 + v * 10)
 
     return [poly_copy, c]
