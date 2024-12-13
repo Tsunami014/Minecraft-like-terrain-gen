@@ -1,17 +1,15 @@
-# Thanks to https://dafluffypotato.com/static/scripts/3d_terrain.py !
 import pygame, sys, math
 from copy import deepcopy
-
 import noise
 
 clock = pygame.time.Clock()
-from pygame.locals import *
 pygame.init()
 pygame.display.set_caption('3D Terrain')
 screen = pygame.display.set_mode((500, 500), 0, 32)
 
 FOV = 90
-FOG = True
+FOG = False
+CHUNK_SIZE = 30
 
 def offset_polygon(polygon, offset):
     for point in polygon:
@@ -19,81 +17,97 @@ def offset_polygon(polygon, offset):
         point[1] += offset[1]
         point[2] += offset[2]
 
-def project_polygon(polygon):
+def rotate_point(point, rot):
+    x, y, z = point
+
+    # Rotation around X-axis (pitch)
+    cos_pitch = math.cos(rot[0])
+    sin_pitch = math.sin(rot[0])
+    y1 = y * cos_pitch - z * sin_pitch
+    z1 = y * sin_pitch + z * cos_pitch
+
+    # Rotation around Y-axis (yaw)
+    cos_yaw = math.cos(rot[1])
+    sin_yaw = math.sin(rot[1])
+    x1 = x * cos_yaw + z1 * sin_yaw
+    z2 = -x * sin_yaw + z1 * cos_yaw
+
+    # Rotation around Z-axis (roll)
+    cos_roll = math.cos(rot[2])
+    sin_roll = math.sin(rot[2])
+    x2 = x1 * cos_roll - y1 * sin_roll
+    y2 = x1 * sin_roll + y1 * cos_roll
+
+    return [x2, y2, z2]
+
+def project_polygon(polygon, player_rot):
     projected_points = []
     for point in polygon:
-        x_angle = math.atan2(point[0], point[2])
-        y_angle = math.atan2(point[1], point[2])
-        x = x_angle / math.radians(FOV) * screen.get_width() + screen.get_height() // 2
-        y = y_angle / math.radians(FOV) * screen.get_width() + screen.get_width() // 2
+        rotated_point = rotate_point(point, player_rot)
+        if rotated_point[2] <= 0:
+            continue  # Skip points behind the camera
+        factor = screen.get_width() / (2 * math.tan(math.radians(FOV) / 2))
+        x = (rotated_point[0] * factor) / rotated_point[2] + screen.get_width() / 2
+        y = (rotated_point[1] * factor) / rotated_point[2] + screen.get_height() / 2
         projected_points.append([x, y])
     return projected_points
 
-def gen_polygon(polygon_base, polygon_data):
+def gen_polygon(polygon_base, player_pos, player_rot):
     generated_polygon = deepcopy(polygon_base)
-    offset_polygon(generated_polygon, polygon_data['pos'])
-    return project_polygon(generated_polygon)
+    # Translate polygon to camera space
+    offset_polygon(generated_polygon, [-player_pos[0], -player_pos[1], -player_pos[2]])
+    return project_polygon(generated_polygon, player_rot)
 
-poly_data = {
-    'pos': [0, 0, 4.5],
-    'rot': [0, 0, 0],
-    }
+pos = [0, 0, 0]
+rot = [0, 0, 0]
 
 square_polygon = [
-    [-0.5, 0.5, -0.5],
-    [0.5, 0.5, -0.5],
-    [0.5, 0.5, 0.5],
-    [-0.5, 0.5, 0.5],
+    [-0.5, 0, -0.5],
+    [0.5, 0, -0.5],
+    [0.5, 0, 0.5],
+    [-0.5, 0, 0.5],
 ]
 
-polygons = []
+def generate_poly(x, y):
+    poly_copy = deepcopy(square_polygon)
+    offset_polygon(poly_copy, [x, 0, y])
 
-def generate_poly_row(y):
-    global polygons
-    # there are 30 "rectangles" in a row
-    for x in range(30):
+    water = True
+    depth = 0
 
-        # make a copy of the base square polygon data
-        poly_copy = deepcopy(square_polygon)
-
-        # offset it to the correct position
-        offset_polygon(poly_copy, [x - 15, 5, y + 5])
-
-        # some variables for keeping track of water
-        water = True
-        depth = 0
-
-        # adjust corner height based on the value from the noise at the corner's location (limit lowest value and replace with water)
-        for corner in poly_copy:
-            v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
-            v2 = noise.pnoise2(corner[0] / 30 + 1000, corner[2] / 30)
-            if v < 0:
-                depth -= v
-                v = 0
-            else:
-                water = False
-            corner[1] -= v * 4.5
-
-        # handle coloring
-        if water:
-            c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
+    for corner in poly_copy:
+        v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
+        v2 = noise.pnoise2(corner[0] / CHUNK_SIZE + 1000, corner[2] / CHUNK_SIZE)
+        if v < 0:
+            depth -= v
+            v = 0
         else:
-            c = (30 - v * 10 + v2 * 30, 50 + v2 * 40 + v * 30, 50 + v * 10)
+            water = False
+        corner[1] -= v * 4.5
 
-        # add polygon to front of list
-        polygons = [[poly_copy, c]] + polygons
+    if water:
+        c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
+    else:
+        c = (CHUNK_SIZE - v * 10 + v2 * CHUNK_SIZE, 50 + v2 * 40 + v * CHUNK_SIZE, 50 + v * 10)
 
-next_row = 0
-for y in range(26):
-    generate_poly_row(y)
-    next_row += 1
+    return [poly_copy, c]
 
-noise_surf = pygame.Surface((100, 100))
-for x in range(100):
-    for y in range(100):
-        v = noise.pnoise2(x / 30, y / 30)
-        v = (v + 1) / 2
-        noise_surf.set_at((x, y), (v * 255, v * 255, v * 255))
+def generate_surround_polys(pos, polygons):
+    newpolys = {}
+    start_x = int(pos[0] - CHUNK_SIZE / 2)
+    start_y = int(pos[2] - CHUNK_SIZE / 2)
+    for y in range(CHUNK_SIZE):
+        for x in range(CHUNK_SIZE):
+            world_x = start_x + x
+            world_y = start_y + y
+            p = (world_x, world_y)
+            if p in polygons:
+                newpolys[p] = polygons[p]
+            else:
+                newpolys[p] = generate_poly(world_x, world_y)
+    return newpolys
+
+polygons = generate_surround_polys(pos, {})
 
 while True:
     bg_surf = pygame.Surface(screen.get_size())
@@ -103,39 +117,58 @@ while True:
     bg_surf.set_alpha(120)
 
     # move
-    poly_data['pos'][2] -= 0.25
+    keys = pygame.key.get_pressed()
+    moved = False
+    if keys[pygame.K_w]:
+        pos[2] += 0.25
+        moved = True
+    if keys[pygame.K_s]:
+        pos[2] -= 0.25
+        moved = True
+    if keys[pygame.K_a]:
+        pos[0] += 0.25
+        moved = True
+    if keys[pygame.K_d]:
+        pos[0] -= 0.25
+        moved = True
+    if keys[pygame.K_q]:
+        pos[1] += 0.25
+    if keys[pygame.K_e]:
+        pos[1] -= 0.25
 
-    # generate new rows and remove old rows
-    if polygons[-1][0][0][2] < -poly_data['pos'][2]:
-        for i in range(30):
-            polygons.pop(len(polygons) - 1)
-        generate_poly_row(next_row)
-        next_row += 1
+    rot_by = math.radians(1)
+    if keys[pygame.K_UP]:
+        rot[0] -= rot_by
+    if keys[pygame.K_DOWN]:
+        rot[0] += rot_by
+    if keys[pygame.K_LEFT]:
+        rot[1] -= rot_by
+    if keys[pygame.K_RIGHT]:
+        rot[1] += rot_by
+    if keys[pygame.K_PERIOD]:
+        rot[2] += rot_by
+    if keys[pygame.K_SLASH]:
+        rot[2] -= rot_by
+
+    # generate new polygons if moved
+    if moved:
+        polygons = generate_surround_polys(pos, polygons)
 
     # render
-    for i, polygon in enumerate(polygons):
-        if FOG:
-            if (i % 90 == 0) and (i != 0) and (i < 30 * 18):
-                display.blit(bg_surf, (0, 0))
-        render_poly = gen_polygon(polygon[0], poly_data)
-        poly2 = deepcopy(render_poly)
-        for v in poly2:
-            v[1] = 100 - v[1] * 0.2
-            v[0] = 500 - v[0]
-        pygame.draw.polygon(display, polygon[1], render_poly)
-        d = polygon[0][0][1]
-        if d < 5:
-            pygame.draw.polygon(display, (min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255), min(max(0, d * 20) + 150, 255)), poly2)
+    for p, poly in polygons.items():
+        render_poly = gen_polygon(poly[0], pos, rot)
+        if len(render_poly) >= 3:
+            pygame.draw.polygon(display, poly[1], render_poly)
 
     display.set_alpha(150)
     screen.blit(display, (0, 0))
 
     for event in pygame.event.get():
-        if event.type == QUIT:
+        if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == KEYDOWN:
-            if event.key == K_ESCAPE:
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
                 pygame.quit()
                 sys.exit()
 
