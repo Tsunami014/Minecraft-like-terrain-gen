@@ -65,7 +65,21 @@ def gen_polygon(polygon_base, player_pos, player_rot):
     generated_polygon = deepcopy(polygon_base)
     # Translate polygon to camera space
     offset_polygon(generated_polygon, [-player_pos[0], -player_pos[1], -player_pos[2]])
-    return project_polygon(generated_polygon, player_rot)
+    projected_points = []
+    depths = []
+    for point in generated_polygon:
+        rotated_point = rotate_point(point, player_rot)
+        if rotated_point[2] <= 0:
+            continue  # Skip points behind the camera
+        factor = screen.get_width() / (2 * math.tan(math.radians(FOV) / 2))
+        x = (rotated_point[0] * factor) / rotated_point[2] + screen.get_width() / 2
+        y = (rotated_point[1] * factor) / rotated_point[2] + screen.get_height() / 2
+        projected_points.append([x, y])
+        depths.append(rotated_point[2])
+    if is_polygon_on_screen(projected_points) and projected_points:
+        avg_depth = sum(depths) / len(depths)
+        return projected_points, avg_depth
+    return [], 0
 
 pos = [0, 0, 0]
 rot = [0, 0, 0]
@@ -177,10 +191,18 @@ while True:
         polygons = generate_surround_polys(pos, polygons)
 
     # render
+    polygons_to_render = []
+
     for p, poly in polygons.items():
-        render_poly = gen_polygon(poly[0], pos, rot)
+        render_poly, depth = gen_polygon(poly[0], pos, rot)
         if len(render_poly) >= 3:
-            pygame.draw.polygon(display, poly[1], render_poly)
+            polygons_to_render.append((depth, render_poly, poly[1]))
+
+    # Sort polygons by depth (from farthest to nearest)
+    polygons_to_render.sort(reverse=True)
+
+    for depth, render_poly, color in polygons_to_render:
+        pygame.draw.polygon(display, color, render_poly)
 
     display.set_alpha(150)
     screen.blit(display, (0, 0))
