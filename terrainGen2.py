@@ -40,6 +40,12 @@ def rotate_point(point, rot):
 
     return [x2, y2, z2]
 
+def is_polygon_on_screen(polygon):
+    for point in polygon:
+        if 0 <= point[0] < screen.get_width() and 0 <= point[1] < screen.get_height():
+            return True
+    return False
+
 def project_polygon(polygon, player_rot):
     projected_points = []
     for point in polygon:
@@ -50,7 +56,9 @@ def project_polygon(polygon, player_rot):
         x = (rotated_point[0] * factor) / rotated_point[2] + screen.get_width() / 2
         y = (rotated_point[1] * factor) / rotated_point[2] + screen.get_height() / 2
         projected_points.append([x, y])
-    return projected_points
+    if is_polygon_on_screen(projected_points):
+        return projected_points
+    return []
 
 def gen_polygon(polygon_base, player_pos, player_rot):
     generated_polygon = deepcopy(polygon_base)
