@@ -1,6 +1,8 @@
 import json
 import pygame
 import math
+import numpy as np
+from scipy.ndimage import gaussian_filter
 from random import randint
 import noise
 
@@ -10,12 +12,13 @@ pygame.display.set_caption('3D Terrain')
 screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
-FOG = True
+FOG = False
 SEED = randint(-100000, 100000)
 SIZE = 3
 CHUNK_SIZE = 40
-BIOME_SIZE = 10
+BIOME_SIZE = 7
 OUTLINE = 3
+BLUR_AMNT = 3
 
 TP_map = pygame.image.load('TP_map.png')
 
@@ -101,6 +104,13 @@ rot = [0, 0, 0]
 
 BIOME_STATS = json.load(open('biomes.json'))
 
+d = BIOME_STATS['Colours']
+COLOUR2NAME = {tuple(d[i]): i for i in d}
+arr = pygame.surfarray.array3d(TP_map)
+BLURCOLOURS = gaussian_filter(arr, sigma = BLUR_AMNT, mode='nearest')
+variations = np.apply_along_axis(lambda v: BIOME_STATS['Variation'][COLOUR2NAME[tuple(v)]], 2, arr)
+BLURVARS = gaussian_filter(variations, sigma = BLUR_AMNT, mode='nearest')
+
 def generate_poly(x, y):
     poly = [
         [-0.5, 0, -0.5],
@@ -115,33 +125,35 @@ def generate_poly(x, y):
     temp = 0
     precip = 0
 
+    map_w, map_h = TP_map.get_size()
+
     for corner in poly:
         v = noise.pnoise2((corner[0] / 10)/SIZE + SEED, (corner[2] / 10)/SIZE + SEED, octaves=2) * 3
-        temp += noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED)
-        precip += noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED)
+        thistemp = noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED)
+        thisprecip = noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED)
         if v < 0:
             depth -= v
             v = 0
         else:
             water = False
-        corner[1] -= v * 4.5
+        temp += thistemp
+        precip += thisprecip
+        pos = (int(min(map_w-1, max(0, (map_w/2) - (thistemp*4) * (map_w/4)))), int(min(map_h-1, max(0, (map_h/2) - (thisprecip*4) * (map_h/4)))))
+        corner[1] -= (v * BLURVARS[pos]) * 4.5
 
     if water:
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
     else:
-        map_w, map_h = TP_map.get_size()
-        pos = (int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/len(poly))))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/len(poly))))))
-        biome = TP_map.get_at(pos)
+        pos = (int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/4)))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/4)))))
+        biome = BLURCOLOURS[pos]
         # biome_type = get_biome_type(biome)
         c = biome[:3]
 
     return [poly, c]
 
 def get_biome_type(colour):
-    d = BIOME_STATS['Colours']
     colour = tuple(colour[:3])
-    nd = {tuple(d[i]): i for i in d}
-    return nd[colour]
+    return COLOUR2NAME[colour]
 
 def generate_surround_polys(pos, polygons):
     newpolys = {}

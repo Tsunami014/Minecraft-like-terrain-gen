@@ -11,14 +11,14 @@
         "boreal_forest": [35, 114, 94]
     },
     "Variation": {
-        "desert": 1,
-        "savanna": 2,
-        "tropical_woodland": 4,
-        "tundra": 3,
-        "seasonal_forest": 4,
-        "rainforest": 5,
-        "temperate_forest": 4,
-        "temperate_rainforest": 4,
-        "boreal_forest": 3
+        "desert": 0.2,
+        "savanna": 0.4,
+        "tropical_woodland": 1,
+        "tundra": 0.3,
+        "seasonal_forest": 1.2,
+        "rainforest": 1.2,
+        "temperate_forest": 0.9,
+        "temperate_rainforest": 0.8,
+        "boreal_forest": 0.7
     }
 }
