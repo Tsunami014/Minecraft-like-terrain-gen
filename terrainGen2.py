@@ -16,13 +16,12 @@ FOG = True
 SEED = random.randint(-100000, 100000)
 SIZE = 4
 CHUNK_SIZE = 40
-BIOME_SIZE = 3
+BIOME_SIZE = 1
 OUTLINE = 1
 BLUR_AMNT = 3
 
 TP_map = pygame.image.load('TP_map.png')
 
-TREE_PROBABILITY = 0.05  # Probability of a tree on a tile
 TRUNK_COLOR = (139, 69, 19)
 FOLIAGE_COLOR = (34, 139, 34)
 
@@ -112,8 +111,13 @@ d = BIOME_STATS['Colours']
 COLOUR2NAME = {tuple(d[i]): i for i in d}
 arr = pygame.surfarray.array3d(TP_map)
 BLURCOLOURS = gaussian_filter(arr, sigma = BLUR_AMNT, mode='nearest')
-variations = np.apply_along_axis(lambda v: BIOME_STATS['Variation'][COLOUR2NAME[tuple(v)]], 2, arr)
-BLURVARS = gaussian_filter(variations, sigma = BLUR_AMNT, mode='nearest')
+BLURS = {
+    i: gaussian_filter(
+        np.apply_along_axis(lambda v: BIOME_STATS[i][COLOUR2NAME[tuple(v)]], 2, arr), 
+        sigma = BLUR_AMNT, mode='nearest') for i in [
+            'Variation', 'Trees', 'TreeMinHeights', 'TreeMaxHeights'
+        ]
+}
 
 def generate_poly(x, y):
     poly = [
@@ -143,7 +147,7 @@ def generate_poly(x, y):
         temp += thistemp
         precip += thisprecip
         pos = (int(min(map_w-1, max(0, (map_w/2) - (thistemp*4) * (map_w/4)))), int(min(map_h-1, max(0, (map_h/2) - (thisprecip*4) * (map_h/4)))))
-        corner[1] -= (v * BLURVARS[pos]) * 4.5
+        corner[1] -= (v * BLURS['Variation'][pos]) * 4.5
 
     if water:
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
@@ -156,8 +160,8 @@ def generate_poly(x, y):
     tree_polygons = None
     random.seed(y + SEED)
     random.seed(x * random.randint(-999999, 999999) + y + SEED)
-    if random.random() < TREE_PROBABILITY:
-        tree_height = random.uniform(2, 5)
+    if not water and random.random() < BLURS['Trees'][pos]:
+        tree_height = random.uniform(BLURS['TreeMinHeights'][pos], BLURS['TreeMaxHeights'][pos])
         trunk_height = tree_height * 0.6
         x_base = x
         y_base = max(i[1] for i in poly)

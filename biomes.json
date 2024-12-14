@@ -20,5 +20,38 @@
         "temperate_forest": 0.9,
         "temperate_rainforest": 0.8,
         "boreal_forest": 0.7
+    },
+    "Trees": {
+        "desert": 0,
+        "savanna": 0,
+        "tropical_woodland": 0.1,
+        "tundra": 0.05,
+        "seasonal_forest": 0.2,
+        "rainforest": 0.25,
+        "temperate_forest": 0.2,
+        "temperate_rainforest": 0.3,
+        "boreal_forest": 0.35
+    },
+    "TreeMinHeights": {
+        "desert": 0.5,
+        "savanna": 1,
+        "tropical_woodland": 2,
+        "tundra": 1,
+        "seasonal_forest": 2,
+        "rainforest": 3,
+        "temperate_forest": 2,
+        "temperate_rainforest": 3,
+        "boreal_forest": 4
+    },
+    "TreeMaxHeights": {
+        "desert": 1.5,
+        "savanna": 2,
+        "tropical_woodland": 4,
+        "tundra": 2,
+        "seasonal_forest": 4,
+        "rainforest": 6,
+        "temperate_forest": 4,
+        "temperate_rainforest": 6,
+        "boreal_forest": 8
     }
 }
