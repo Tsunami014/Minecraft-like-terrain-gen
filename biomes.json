@@ -25,7 +25,7 @@
         "desert": 0,
         "savanna": 0,
         "tropical_woodland": 0.1,
-        "tundra": 0.05,
+        "tundra": 0.005,
         "seasonal_forest": 0.2,
         "rainforest": 0.25,
         "temperate_forest": 0.2,
@@ -53,5 +53,16 @@
         "temperate_forest": 4,
         "temperate_rainforest": 6,
         "boreal_forest": 8
+    },
+    "Mountanicity": {
+        "desert": 0.4,
+        "savanna": 0.4,
+        "tropical_woodland": 0.7,
+        "tundra": 0.4,
+        "seasonal_forest": 1,
+        "rainforest": 1.2,
+        "temperate_forest": 1.4,
+        "temperate_rainforest": 1.2,
+        "boreal_forest": 2
     }
 }

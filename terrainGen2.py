@@ -114,9 +114,7 @@ BLURCOLOURS = gaussian_filter(arr, sigma = BLUR_AMNT, mode='nearest')
 BLURS = {
     i: gaussian_filter(
         np.apply_along_axis(lambda v: BIOME_STATS[i][COLOUR2NAME[tuple(v)]], 2, arr), 
-        sigma = BLUR_AMNT, mode='nearest') for i in [
-            'Variation', 'Trees', 'TreeMinHeights', 'TreeMaxHeights'
-        ]
+        sigma = BLUR_AMNT, mode='nearest') for i in BIOME_STATS.keys() if i != 'Colours'
 }
 
 def generate_poly(x, y):
@@ -136,9 +134,18 @@ def generate_poly(x, y):
     map_w, map_h = TP_map.get_size()
 
     for corner in poly:
-        v = noise.pnoise2((corner[0] / 10)/SIZE + SEED, (corner[2] / 10)/SIZE + SEED, octaves=2) * 3
         thistemp = noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED)
         thisprecip = noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED)
+
+        pos = (int(min(map_w-1, max(0, (map_w/2) - (thistemp*4) * (map_w/4)))), int(min(map_h-1, max(0, (map_h/2) - (thisprecip*4) * (map_h/4)))))
+
+        v1 = noise.pnoise2((corner[0] / 10)/SIZE + SEED, (corner[2] / 10)/SIZE + SEED, octaves=2) * 2
+        v2 = (noise.pnoise2((corner[0] / 10)/SIZE + SEED - 1000, (corner[2] / 10)/SIZE + SEED - 2000, octaves=2)+0.5)
+        v2 = (round(v2 * 10) / 10) * 2
+        v3 = noise.pnoise2(((corner[0] / 10)/SIZE + SEED + 1000) * BLURS['Mountanicity'][pos], ((corner[2] / 10)/SIZE + SEED - 1000) * BLURS['Mountanicity'][pos], octaves=2)
+        v3 = (round(v3 * 3) / 3) * (BLURS['Mountanicity'][pos] / 2)
+        v = v1 * v2 + v3
+
         if v < 0:
             depth -= v
             v = 0
@@ -146,7 +153,6 @@ def generate_poly(x, y):
             water = False
         temp += thistemp
         precip += thisprecip
-        pos = (int(min(map_w-1, max(0, (map_w/2) - (thistemp*4) * (map_w/4)))), int(min(map_h-1, max(0, (map_h/2) - (thisprecip*4) * (map_h/4)))))
         corner[1] -= (v * BLURS['Variation'][pos]) * 4.5
 
     if water:
@@ -289,7 +295,7 @@ while run:
     if keys[pygame.K_e] or pygame.key.get_mods() & pygame.KMOD_SHIFT:
         pos[1] += movement
 
-    rot_by = math.radians(2)*speed
+    rot_by = math.radians(3)*speed
     if keys[pygame.K_UP]:
         rot[0] -= rot_by
     if keys[pygame.K_DOWN]:
