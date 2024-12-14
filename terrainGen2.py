@@ -17,7 +17,7 @@ SEED = randint(-100000, 100000)
 SIZE = 4
 CHUNK_SIZE = 40
 BIOME_SIZE = 3
-OUTLINE = 3
+OUTLINE = 1
 BLUR_AMNT = 3
 
 TP_map = pygame.image.load('TP_map.png')
@@ -263,13 +263,7 @@ while run:
         if OUTLINE > 0:
             col = (colour[0]/2, colour[1]/2, colour[2]/2, colour[3])
             surf = (screen if not FOG else bg)
-            for ln in range(len(render_poly)):
-                p1 = render_poly[ln]
-                p2 = render_poly[(ln+1)%len(render_poly)]
-                if p1[0] >= 0 and p1[1] >= 0 and p1[0] <= screen.get_width() and p1[1] <= screen.get_height():
-                    pygame.draw.line(surf, col, p1, p2, width=OUTLINE)
-                else:
-                    pygame.draw.line(surf, col, p2, p1, width=OUTLINE)
+            pygame.draw.polygon(surf, col, render_poly, OUTLINE)
 
     if FOG:
         screen.blit(bg, (0, 0))
