@@ -1,7 +1,7 @@
 import json
 import pygame
 import math
-from copy import deepcopy
+from random import randint
 import noise
 
 clock = pygame.time.Clock()
@@ -10,9 +10,10 @@ pygame.display.set_caption('3D Terrain')
 screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
-FOG = False
+FOG = True
+SEED = randint(-100000, 100000)
 SIZE = 3
-CHUNK_SIZE = 30
+CHUNK_SIZE = 40
 BIOME_SIZE = 10
 OUTLINE = 3
 
@@ -52,37 +53,42 @@ def is_polygon_on_screen(polygon):
     if len(polygon) == 0:
         return False
     xs, ys = zip(*polygon)
-    if max(xs) < 0 or min(xs) > screen.get_width() or max(ys) < 0 or min(ys) > screen.get_height():
+    scrw, scrh = screen.get_size()
+    if max(xs) < 0 or min(xs) > scrw or max(ys) < 0 or min(ys) > scrh:
         return False
     return True
 
 def project_polygon(polygon, player_rot):
     projected_points = []
+    scrw, scrh = screen.get_size()
     for point in polygon:
         rotated_point = rotate_point(point, player_rot)
         if rotated_point[2] <= 0:
             continue  # Skip points behind the camera
-        factor = screen.get_width() / (2 * math.tan(math.radians(FOV) / 2))
-        x = (rotated_point[0] * factor) / rotated_point[2] + screen.get_width() / 2
-        y = (rotated_point[1] * factor) / rotated_point[2] + screen.get_height() / 2
+        factor = scrw / (2 * math.tan(math.radians(FOV) / 2))
+        x = (rotated_point[0] * factor) / rotated_point[2] + scrw / 2
+        y = (rotated_point[1] * factor) / rotated_point[2] + scrh / 2
         projected_points.append([x, y])
     if is_polygon_on_screen(projected_points):
         return projected_points
     return []
 
 def gen_polygon(polygon_base, player_pos, player_rot):
-    generated_polygon = deepcopy(polygon_base)
+    generated_polygon = [point[:] for point in polygon_base]  # Manual copy of the polygon
     # Translate polygon to camera space
     offset_polygon(generated_polygon, [-player_pos[0], -player_pos[1], -player_pos[2]])
     projected_points = []
     depths = []
+    scrw, scrh = screen.get_size()
+    hsw, hsh = scrw / 2, scrh / 2
+    factordiv = 2 * math.tan(math.radians(FOV) / 2)
     for point in generated_polygon:
         rotated_point = rotate_point(point, player_rot)
         if rotated_point[2] <= 0:
             continue  # Skip points behind the camera
-        factor = screen.get_width() / (2 * math.tan(math.radians(FOV) / 2))
-        x = (rotated_point[0] * factor) / rotated_point[2] + screen.get_width() / 2
-        y = (rotated_point[1] * factor) / rotated_point[2] + screen.get_height() / 2
+        factor = scrw / factordiv
+        x = (rotated_point[0] * factor) / rotated_point[2] + hsw
+        y = (rotated_point[1] * factor) / rotated_point[2] + hsh
         projected_points.append([x, y])
         depths.append(rotated_point[2])
     if is_polygon_on_screen(projected_points) and projected_points:
@@ -110,9 +116,9 @@ def generate_poly(x, y):
     precip = 0
 
     for corner in poly:
-        v = noise.pnoise2(corner[0] / 10 / SIZE, corner[2] / 10 / SIZE, octaves=2) * 3
-        temp += noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE)
-        precip += noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE)
+        v = noise.pnoise2((corner[0] / 10)/SIZE + SEED, (corner[2] / 10)/SIZE + SEED, octaves=2) * 3
+        temp += noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE + SEED)
+        precip += noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE + SEED)
         if v < 0:
             depth -= v
             v = 0
@@ -165,6 +171,8 @@ def move_player(pos, rot, direction, amount, strafe=False):
     pos[2] += dz * direction
 
 polygons = generate_surround_polys(pos, {})
+
+pos[1] = -(polygons[(0, 0)][0][0][1] + 2)
 
 run = True
 while run:
@@ -231,7 +239,9 @@ while run:
     else:
         maxDepth = max(i[0] for i in polygons_to_render)
     for depth, render_poly, colour in polygons_to_render:
-        colour = (*colour, (1-depth/maxDepth)*255)
+        dpth = 1-(depth/maxDepth)
+        dpth = (dpth*2)**2
+        colour = (*colour, min(dpth*255, 255))
         if FOG:
             pygame.draw.polygon(bg, colour, render_poly)
             if OUTLINE > 0:
