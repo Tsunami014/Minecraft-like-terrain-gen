@@ -12,11 +12,11 @@ pygame.display.set_caption('3D Terrain')
 screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
-FOG = False
+FOG = True
 SEED = randint(-100000, 100000)
-SIZE = 3
+SIZE = 4
 CHUNK_SIZE = 40
-BIOME_SIZE = 7
+BIOME_SIZE = 3
 OUTLINE = 3
 BLUR_AMNT = 3
 
@@ -260,8 +260,16 @@ while run:
                 pygame.draw.polygon(bg, (colour[0]/2, colour[1]/2, colour[2]/2, colour[3]), render_poly, OUTLINE)
         else:
             pygame.draw.polygon(screen, colour, render_poly)
-            if OUTLINE > 0:
-                pygame.draw.polygon(screen, (colour[0]/2, colour[1]/2, colour[2]/2, colour[3]), render_poly, OUTLINE)
+        if OUTLINE > 0:
+            col = (colour[0]/2, colour[1]/2, colour[2]/2, colour[3])
+            surf = (screen if not FOG else bg)
+            for ln in range(len(render_poly)):
+                p1 = render_poly[ln]
+                p2 = render_poly[(ln+1)%len(render_poly)]
+                if p1[0] >= 0 and p1[1] >= 0 and p1[0] <= screen.get_width() and p1[1] <= screen.get_height():
+                    pygame.draw.line(surf, col, p1, p2, width=OUTLINE)
+                else:
+                    pygame.draw.line(surf, col, p2, p1, width=OUTLINE)
 
     if FOG:
         screen.blit(bg, (0, 0))
