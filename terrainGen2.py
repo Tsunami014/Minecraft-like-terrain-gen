@@ -1,3 +1,4 @@
+import json
 import pygame
 import math
 from copy import deepcopy
@@ -95,6 +96,8 @@ square_polygon = [
     [-0.5, 0, 0.5],
 ]
 
+BIOME_STATS = json.load(open('biomes.json'))
+
 def generate_poly(x, y):
     poly_copy = deepcopy(square_polygon)
     offset_polygon(poly_copy, [x, 0, y])
@@ -119,11 +122,18 @@ def generate_poly(x, y):
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
     else:
         map_w, map_h = TP_map.get_size()
-        biome = TP_map.get_at((int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/2)))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/2))))))
+        pos = (int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/len(square_polygon))))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/len(square_polygon))))))
+        biome = TP_map.get_at(pos)
+        # biome_type = get_biome_type(biome)
         c = biome[:3]
-        #c = (CHUNK_SIZE - v * 10 + v2 * CHUNK_SIZE, 50 + v2 * 40 + v * CHUNK_SIZE, 50 + v * 10)
 
     return [poly_copy, c]
+
+def get_biome_type(colour):
+    d = BIOME_STATS['Colours']
+    colour = tuple(colour[:3])
+    nd = {tuple(d[i]): i for i in d}
+    return nd[colour]
 
 def generate_surround_polys(pos, polygons):
     newpolys = {}

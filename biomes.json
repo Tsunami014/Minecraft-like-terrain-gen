@@ -1,0 +1,24 @@
+{
+    "Colours": {
+        "desert": [255, 255, 178],
+        "savanna": [184, 200, 98],
+        "tropical_woodland": [188, 161, 53],
+        "tundra": [190, 255, 242],
+        "seasonal_forest": [106, 144, 38],
+        "rainforest": [33, 77, 41],
+        "temperate_forest": [86, 179, 106],
+        "temperate_rainforest": [34, 61, 53],
+        "boreal_forest": [35, 114, 94]
+    },
+    "Variation": {
+        "desert": 1,
+        "savanna": 2,
+        "tropical_woodland": 4,
+        "tundra": 3,
+        "seasonal_forest": 4,
+        "rainforest": 5,
+        "temperate_forest": 4,
+        "temperate_rainforest": 4,
+        "boreal_forest": 3
+    }
+}
