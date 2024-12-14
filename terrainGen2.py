@@ -3,7 +3,7 @@ import pygame
 import math
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from random import randint
+from random import randint, random
 import noise
 
 clock = pygame.time.Clock()
@@ -21,6 +21,10 @@ OUTLINE = 1
 BLUR_AMNT = 3
 
 TP_map = pygame.image.load('TP_map.png')
+
+TREE_PROBABILITY = 0.05  # Probability of a tree on a tile
+TRUNK_COLOR = (139, 69, 19)
+FOLIAGE_COLOR = (34, 139, 34)
 
 def offset_polygon(polygon, offset):
     for point in polygon:
@@ -149,7 +153,74 @@ def generate_poly(x, y):
         # biome_type = get_biome_type(biome)
         c = biome[:3]
 
-    return [poly, c]
+    tree_polygons = None
+    if random() < TREE_PROBABILITY:
+        tree_height = 2
+        trunk_height = tree_height * 0.6
+        foliage_height = tree_height - trunk_height
+        x_base = x
+        y_base = poly[0][1]
+        z_base = y
+
+        trunk = [
+            [
+                [x_base - 0.1, y_base, z_base - 0.1],
+                [x_base + 0.1, y_base, z_base - 0.1],
+                [x_base + 0.1, y_base - trunk_height, z_base - 0.1],
+                [x_base - 0.1, y_base - trunk_height, z_base - 0.1],
+            ],
+            [
+                [x_base - 0.1, y_base, z_base + 0.1],
+                [x_base + 0.1, y_base, z_base + 0.1],
+                [x_base + 0.1, y_base - trunk_height, z_base + 0.1],
+                [x_base - 0.1, y_base - trunk_height, z_base + 0.1],
+            ],
+            [
+                [x_base - 0.1, y_base, z_base - 0.1],
+                [x_base - 0.1, y_base, z_base + 0.1],
+                [x_base - 0.1, y_base - trunk_height, z_base + 0.1],
+                [x_base - 0.1, y_base - trunk_height, z_base - 0.1],
+            ],
+            [
+                [x_base + 0.1, y_base, z_base - 0.1],
+                [x_base + 0.1, y_base, z_base + 0.1],
+                [x_base + 0.1, y_base - trunk_height, z_base + 0.1],
+                [x_base + 0.1, y_base - trunk_height, z_base - 0.1],
+            ],
+        ]
+
+        foliage = [
+            [
+                [x_base, y_base - tree_height, z_base],
+                [x_base - 0.5, y_base - trunk_height, z_base - 0.5],
+                [x_base + 0.5, y_base - trunk_height, z_base - 0.5],
+            ],
+            [
+                [x_base, y_base - tree_height, z_base],
+                [x_base - 0.5, y_base - trunk_height, z_base + 0.5],
+                [x_base + 0.5, y_base - trunk_height, z_base + 0.5],
+            ],
+            [
+                [x_base, y_base - tree_height, z_base],
+                [x_base + 0.5, y_base - trunk_height, z_base - 0.5],
+                [x_base + 0.5, y_base - trunk_height, z_base + 0.5],
+            ],
+            [
+                [x_base, y_base - tree_height, z_base],
+                [x_base - 0.5, y_base - trunk_height, z_base - 0.5],
+                [x_base - 0.5, y_base - trunk_height, z_base + 0.5],
+            ],
+            [
+                [x_base - 0.5, y_base - trunk_height, z_base - 0.5],
+                [x_base + 0.5, y_base - trunk_height, z_base - 0.5],
+                [x_base + 0.5, y_base - trunk_height, z_base + 0.5],
+                [x_base - 0.5, y_base - trunk_height, z_base + 0.5],
+            ],
+        ]
+
+        tree_polygons = {'trunk': trunk, 'foliage': foliage}
+
+    return [poly, c, tree_polygons]
 
 def get_biome_type(colour):
     colour = tuple(colour[:3])
@@ -238,6 +309,16 @@ while run:
         render_poly, depth = gen_polygon(poly[0], pos, rot)
         if len(render_poly) >= 3:
             polygons_to_render.append((depth, render_poly, poly[1]))
+        if len(poly) > 2 and poly[2]:
+            tree = poly[2]
+            for face in tree['trunk']:
+                render_face, face_depth = gen_polygon(face, pos, rot)
+                if len(render_face) >= 3:
+                    polygons_to_render.append((face_depth, render_face, TRUNK_COLOR))
+            for face in tree['foliage']:
+                render_face, face_depth = gen_polygon(face, pos, rot)
+                if len(render_face) >= 3:
+                    polygons_to_render.append((face_depth, render_face, FOLIAGE_COLOR))
 
     # Sort polygons by depth (from farthest to nearest)
     polygons_to_render.sort(reverse=True)
