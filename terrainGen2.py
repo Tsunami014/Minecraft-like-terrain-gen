@@ -13,6 +13,7 @@ FOV = 90
 FOG = False
 CHUNK_SIZE = 30
 BIOME_SIZE = 10
+OUTLINE = 3
 
 TP_map = pygame.image.load('TP_map.png')
 
@@ -47,8 +48,13 @@ def rotate_point(point, rot):
     return [x2, y2, z2]
 
 def is_polygon_on_screen(polygon):
+    if len(polygon) == 0:
+        return False
+    xs, ys = zip(*polygon)
+    mw, mh = max(xs)-min(xs), max(ys)-min(ys)
+    mw, mh = mw/2, mh/2
     for point in polygon:
-        if 0 <= point[0] < screen.get_width() and 0 <= point[1] < screen.get_height():
+        if -mw <= point[0] < screen.get_width()+mw and -mh <= point[1] < screen.get_height()+mh:
             return True
     return False
 
@@ -232,19 +238,21 @@ while run:
         colour = (*colour, (1-depth/maxDepth)*255)
         if FOG:
             pygame.draw.polygon(bg, colour, render_poly)
+            if OUTLINE > 0:
+                pygame.draw.polygon(bg, (colour[0]/2, colour[1]/2, colour[2]/2, colour[3]), render_poly, OUTLINE)
         else:
             pygame.draw.polygon(screen, colour, render_poly)
+            if OUTLINE > 0:
+                pygame.draw.polygon(screen, (colour[0]/2, colour[1]/2, colour[2]/2, colour[3]), render_poly, OUTLINE)
 
     if FOG:
         screen.blit(bg, (0, 0))
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
             run = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
-                pygame.quit()
                 run = False
 
     pygame.display.update()
