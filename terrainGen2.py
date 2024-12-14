@@ -3,7 +3,7 @@ import pygame
 import math
 import numpy as np
 from scipy.ndimage import gaussian_filter
-from random import randint, random
+import random
 import noise
 
 clock = pygame.time.Clock()
@@ -13,7 +13,7 @@ screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
 FOG = True
-SEED = randint(-100000, 100000)
+SEED = random.randint(-100000, 100000)
 SIZE = 4
 CHUNK_SIZE = 40
 BIOME_SIZE = 3
@@ -97,7 +97,7 @@ def gen_polygon(polygon_base, player_pos, player_rot):
         x = (rotated_point[0] * factor) / rotated_point[2] + hsw
         y = (rotated_point[1] * factor) / rotated_point[2] + hsh
         projected_points.append([x, y])
-        depths.append(rotated_point[2])
+        depths.append(math.sqrt(rotated_point[0]**2 + rotated_point[1]**2 + rotated_point[2]**2))
     if is_polygon_on_screen(projected_points) and projected_points:
         avg_depth = sum(depths) / len(depths)
         return projected_points, avg_depth
@@ -154,12 +154,13 @@ def generate_poly(x, y):
         c = biome[:3]
 
     tree_polygons = None
-    if random() < TREE_PROBABILITY:
-        tree_height = 2
+    random.seed(y + SEED)
+    random.seed(x * random.randint(-999999, 999999) + y + SEED)
+    if random.random() < TREE_PROBABILITY:
+        tree_height = random.uniform(2, 5)
         trunk_height = tree_height * 0.6
-        foliage_height = tree_height - trunk_height
         x_base = x
-        y_base = poly[0][1]
+        y_base = max(i[1] for i in poly)
         z_base = y
 
         trunk = [
