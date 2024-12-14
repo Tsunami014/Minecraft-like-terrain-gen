@@ -11,6 +11,7 @@ screen = pygame.display.set_mode((500, 500))
 
 FOV = 90
 FOG = False
+SIZE = 3
 CHUNK_SIZE = 30
 BIOME_SIZE = 10
 OUTLINE = 3
@@ -51,12 +52,9 @@ def is_polygon_on_screen(polygon):
     if len(polygon) == 0:
         return False
     xs, ys = zip(*polygon)
-    mw, mh = max(xs)-min(xs), max(ys)-min(ys)
-    mw, mh = mw/2, mh/2
-    for point in polygon:
-        if -mw <= point[0] < screen.get_width()+mw and -mh <= point[1] < screen.get_height()+mh:
-            return True
-    return False
+    if max(xs) < 0 or min(xs) > screen.get_width() or max(ys) < 0 or min(ys) > screen.get_height():
+        return False
+    return True
 
 def project_polygon(polygon, player_rot):
     projected_points = []
@@ -95,28 +93,26 @@ def gen_polygon(polygon_base, player_pos, player_rot):
 pos = [0, 0, 0]
 rot = [0, 0, 0]
 
-square_polygon = [
-    [-0.5, 0, -0.5],
-    [0.5, 0, -0.5],
-    [0.5, 0, 0.5],
-    [-0.5, 0, 0.5],
-]
-
 BIOME_STATS = json.load(open('biomes.json'))
 
 def generate_poly(x, y):
-    poly_copy = deepcopy(square_polygon)
-    offset_polygon(poly_copy, [x, 0, y])
+    poly = [
+        [-0.5, 0, -0.5],
+        [0.5, 0, -0.5],
+        [0.5, 0, 0.5],
+        [-0.5, 0, 0.5],
+    ]
+    offset_polygon(poly, [x, 0, y])
 
     water = True
     depth = 0
     temp = 0
     precip = 0
 
-    for corner in poly_copy:
-        v = noise.pnoise2(corner[0] / 10, corner[2] / 10, octaves=2) * 3
-        temp += noise.pnoise2(corner[0] / CHUNK_SIZE + 1000, corner[2] / CHUNK_SIZE)
-        precip += noise.pnoise2((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE, (corner[2] / CHUNK_SIZE)/BIOME_SIZE)
+    for corner in poly:
+        v = noise.pnoise2(corner[0] / 10 / SIZE, corner[2] / 10 / SIZE, octaves=2) * 3
+        temp += noise.pnoise2(((corner[0] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE, ((corner[2] / CHUNK_SIZE + 1000)/BIOME_SIZE)/SIZE)
+        precip += noise.pnoise2(((corner[0] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE, ((corner[2] / CHUNK_SIZE + 2000)/BIOME_SIZE)/SIZE)
         if v < 0:
             depth -= v
             v = 0
@@ -128,12 +124,12 @@ def generate_poly(x, y):
         c = (0, min(255, max(0, 150 - depth * 25)), min(255, max(0, 255 - depth * 25)))
     else:
         map_w, map_h = TP_map.get_size()
-        pos = (int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/len(square_polygon))))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/len(square_polygon))))))
+        pos = (int(min(map_w-1, max(0, (map_w/2) - temp * (map_w/len(poly))))), int(min(map_h-1, max(0, (map_h/2) - precip * (map_h/len(poly))))))
         biome = TP_map.get_at(pos)
         # biome_type = get_biome_type(biome)
         c = biome[:3]
 
-    return [poly_copy, c]
+    return [poly, c]
 
 def get_biome_type(colour):
     d = BIOME_STATS['Colours']
